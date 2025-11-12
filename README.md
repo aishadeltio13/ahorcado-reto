@@ -13,18 +13,6 @@ Si ejecuto el script sin pasarle ningún fichero (por ejemplo: python ahorcado.p
 Hoy estuve modificando el script del Ahorcado. El objetivo era bastante grande: dejar de leer un fichero local y, en su lugar, conectarme a una API de la RAE para pedir palabras aleatorias, procesarlas y guardarlas en la base de datos. Después me tocó pelearme un poco con Docker para que todo funcionara bien.
 ## **1. Estructura del código en Python**
 El script pasó de ser un procesador batch (que leía un fichero y terminaba) a ser un servicio continuo que pide palabras sin parar. Tuve que reorganizar varias partes del código.
-### **Funciones principales**
-**get\_random\_word()** – Se conecta a la API de la RAE (https://rae-api.com/api/random) y maneja errores de red. Si la API falla o tarda demasiado, devuelve None para que el bucle principal reintente.
-
-**normalizar\_palabra(palabra)** – Limpia la palabra quitando tildes y caracteres no válidos. Convierte todo a mayúsculas y solo deja letras A-Z.
-
-**crear\_tabla(cursor)** – Comprueba que la tabla 'ahorcado' exista. Si no, la crea con CREATE TABLE IF NOT EXISTS.
-
-**procesar\_una\_palabra(palabra\_limpia)** – Simula el juego del ahorcado para una palabra ya limpia. Devuelve una lista de tuplas con los estados del juego.
-
-**guardar\_datos(cursor, registros)** – Guarda todos los registros de una palabra en la base de datos usando cursor.executemany(), lo que es más eficiente que varios INSERT.
-### **Lógica principal**
-En la parte principal del script (if \_\_name\_\_ == '\_\_main\_\_':), se establece la conexión con la base de datos, se crea la tabla si no existe y se inicia un bucle infinito. En cada ciclo, el script obtiene una palabra, la limpia, la procesa, guarda los resultados y espera 10 segundos antes de repetir. Todo está dentro de un try/except para poder detenerlo con Ctrl+C sin perder la conexión.
 ## **2. Docker: problemas y soluciones**
 Error 1: service 'app' is not running
 
