@@ -4,12 +4,33 @@ import os
 import sys
 import psycopg
 from datetime import datetime
+import requests
+import time
 
+# PASO 1: CONECTARNOS A LA BASE DE DATOS
 url = os.getenv("DATABASE_URL")
 connection = psycopg.connect(url)
 cur = connection.cursor()
 print("BD conectada con éxito")
 
+# PASO 2: CONECTARNOS A LA API
+def conectar_api():
+    url = "https://rae-api.com/api/random"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        print(data)
+        return data
+    except:
+        print(f"Error")
+
+# PASO 3: LA PALABRA TIENE QUE ESTAR EN MAYÚSCULAS Y SIN TILDES
+def limpiar_palabra(palabra):
+    palabra = palabra.upper()
+    palabra = palabra.replace("Á","A").replace("É","E").replace("Í","I").replace("Ó","O").replace("Ú","U")
+    return palabra
+
+# PASO 4: CREAR LA TABLA PARA GUARDAR LOS DATOS
 def createTableAhorcado():
     try:
         query = """
@@ -29,42 +50,36 @@ def createTableAhorcado():
         print("Error creando la tabla ahorcado", e)
 createTableAhorcado()
 
-archivo = sys.argv[1]
-with open(archivo, "r", encoding="utf-8") as f:
-    lista = [linea.strip() for linea in f]
-    print(lista)
 
-abecedario = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "Ñ", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+# # PASO 5: BUCLE + INSERTAR RESULTADOS + OPTIMIZACION: colocamos las letras del abecedario de más o menos comunes
+abecedario = ["E","A","O","S","R","N","I","D","L","C","T","U","M","P","B","G","V","Y","Q","H","F","Z","J","Ñ","X","K","W"]
 
-intentos_totales = 0
-
-for palabra in lista:
+while True:
+    data = conectar_api()
+    palabra = limpiar_palabra(data["data"]["word"])
     letras_acertadas = []
+    letras_fallidas = []
     intentos = 0
-    letras_fallidas = []  
-    
+
     for letra_a in abecedario:
         intentos += 1
-        intentos_totales += 1
-        
         for letra_l in palabra:
             if letra_a == letra_l and letra_a not in letras_acertadas:
                 letras_acertadas.append(letra_a)
-        
         if letra_a not in palabra and letra_a not in letras_fallidas:
             letras_fallidas.append(letra_a)
         
         letras_acertadas_str = "".join(sorted(letras_acertadas))
         letras_fallidas_str = "".join(sorted(letras_fallidas))
         cur.execute(
-        "INSERT INTO ahorcado_sinIA (palabra, letras_acertadas, letras_fallidas, intentos, tiempo) VALUES (%s, %s, %s, %s, %s)",
-        (palabra, letras_acertadas_str, letras_fallidas_str, intentos, datetime.now())
+            "INSERT INTO ahorcado_sinIA_API (palabra, letras_acertadas, letras_fallidas, intentos, tiempo) VALUES (%s, %s, %s, %s, %s)",
+            (palabra, letras_acertadas_str, letras_fallidas_str, intentos, datetime.now())
         )
         connection.commit()
         
         if len(letras_acertadas) == len(set(palabra)):
-            print(f"Palabra: {palabra}; Intentos: {intentos}; Letras acertadas: {letras_acertadas}; Letras fallidas: {letras_fallidas}")
+            print(f"Palabra: {palabra}; Intentos: {intentos}")
             break
 
-print("Intentos totales:", intentos_totales)
+    time.sleep(10)  
 
